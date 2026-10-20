@@ -1,0 +1,214 @@
+package davoesducastur.chinookspring.app;
+
+import davoesducastur.chinookspring.modelo.*;
+import davoesducastur.chinookspring.operaciones.*;
+import davoesducastur.chinookspring.repositorio.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+import java.util.Scanner;
+
+@Component
+@RequiredArgsConstructor
+public class MenuConsola implements CommandLineRunner {
+
+    private final Scanner teclado = new Scanner(System.in);
+
+    private final GeneroRepository generoRepository;
+    private final ArtistaRepository artistaRepository;
+    private final AlbumRepository albumRepository;
+    private final PistaRepository pistaRepository;
+    private final PlaylistRepository playlistRepository;
+
+    private final GestorPlaylists gestorPlaylists;
+    private final ConsultasArtistas consultasArtistas;
+
+    @Override
+    public void run(String... args) {
+        int opcion;
+        do {
+            mostrarMenu();
+            opcion = leerEntero("Elige una opción: ");
+            try {
+                switch (opcion) {
+                    case 1 -> listarGeneros();
+                    case 2 -> contarPistasPorGenero();
+                    case 3 -> buscarArtistas();
+                    case 4 -> artistasMasVendidos();
+                    case 5 -> albumesDeArtista();
+                    case 6 -> pistasDeGenero();
+                    case 7 -> pistasDeAlbum();
+                    case 8 -> insertarAlbum();
+                    case 9 -> cambiarTituloAlbum();
+                    case 10 -> borrarAlbum();
+                    case 11 -> contarPistasPorPlaylist();
+                    case 12 -> anadirPistaAPlaylist();
+                    case 13 -> titulosDeAlbumes();
+                    case 0 -> System.out.println("Hasta pronto.");
+                    default -> System.out.println("Esa opción no existe.");
+                }
+            } catch (IllegalArgumentException e) {
+                System.out.println(e.getMessage());
+            }
+        } while (opcion != 0);
+    }
+
+    private void mostrarMenu() {
+        System.out.println();
+        System.out.println("========= CHINOOK =========");
+        System.out.println(" 1. Listar géneros");
+        System.out.println(" 2. Géneros con su número de pistas");
+        System.out.println(" 3. Buscar artistas");
+        System.out.println(" 4. Artistas más vendidos");
+        System.out.println(" 5. Álbumes de un artista");
+        System.out.println(" 6. Pistas de un género");
+        System.out.println(" 7. Pistas de un álbum");
+        System.out.println(" 8. Añadir un álbum");
+        System.out.println(" 9. Cambiar el título de un álbum");
+        System.out.println("10. Borrar un álbum");
+        System.out.println("11. Playlists con su número de pistas");
+        System.out.println("12. Añadir una pista a una playlist");
+        System.out.println("13. Títulos de los álbumes de un artista");
+        System.out.println(" 0. Salir");
+        System.out.println("===========================");
+    }
+
+    private void listarGeneros() {
+        for (Genero genero : generoRepository.findAllByOrderByNombre()) {
+            System.out.println(genero.getId() + " - " + genero.getNombre());
+        }
+    }
+
+    private void contarPistasPorGenero() {
+        for (Object[] fila : generoRepository.contarPistas()) {
+            System.out.println(fila[0] + ": " + fila[1]);
+        }
+    }
+
+    private void buscarArtistas() {
+        String texto = leerTexto("Texto a buscar: ");
+        List<Artista> artistas = artistaRepository.findByNombreContainingIgnoreCaseOrderByNombre(texto);
+        if (artistas.isEmpty()) {
+            System.out.println("Ningún artista contiene \"" + texto + "\".");
+        }
+        for (Artista artista : artistas) {
+            System.out.println(artista.getId() + " - " + artista.getNombre());
+        }
+    }
+
+    private void artistasMasVendidos() {
+        int n = leerEntero("¿Cuántos artistas quieres ver? ");
+        for (Object[] fila : artistaRepository.masVendidos(n)) {
+            System.out.println(fila[0] + ": " + ((Number) fila[1]).longValue() + " unidades");
+        }
+    }
+
+    private void albumesDeArtista() {
+        int artistaId = leerEntero("Id del artista: ");
+        List<Album> albumes = albumRepository.findByArtistaIdOrderByTitulo(artistaId);
+        if (albumes.isEmpty()) {
+            System.out.println("Ese artista no tiene álbumes.");
+        }
+        for (Album album : albumes) {
+            System.out.println(album.getId() + " - " + album.getTitulo());
+        }
+    }
+
+    private void pistasDeGenero() {
+        int generoId = leerEntero("Id del género: ");
+        System.out.println(pistaRepository.countByGeneroId(generoId) + " pistas. Importe total: "
+                + pistaRepository.sumarPrecios(generoId).orElse(BigDecimal.ZERO) + " €. Las 20 primeras:");
+        for (Pista pista : pistaRepository.findTop20ByGeneroIdOrderByNombre(generoId)) {
+            System.out.println(pista.getNombre() + " | " + pista.getDuracion() + " | " + pista.getPrecioUnitario() + " €");
+        }
+    }
+
+    private void pistasDeAlbum() {
+        int albumId = leerEntero("Id del álbum: ");
+        List<Pista> pistas = pistaRepository.findByAlbumIdOrderById(albumId);
+        if (pistas.isEmpty()) {
+            System.out.println("Ese álbum no tiene pistas.");
+        }
+        for (Pista pista : pistas) {
+            System.out.println(pista.getNombre() + " | " + pista.getDuracion() + " | " + pista.getPrecioUnitario() + " €");
+        }
+    }
+
+    private void insertarAlbum() {
+        String titulo = leerTexto("Título del álbum: ");
+        int artistaId = leerEntero("Id del artista: ");
+        Optional<Artista> artista = artistaRepository.findById(artistaId);
+        if (artista.isEmpty()) {
+            throw new IllegalArgumentException("No existe el artista " + artistaId);
+        }
+        Album album = albumRepository.save(new Album(null, titulo, artista.get()));
+        System.out.println("Álbum guardado con el id " + album.getId() + ".");
+    }
+
+    private void cambiarTituloAlbum() {
+        int albumId = leerEntero("Id del álbum: ");
+        String titulo = leerTexto("Nuevo título: ");
+        Optional<Album> encontrado = albumRepository.findById(albumId);
+        if (encontrado.isEmpty()) {
+            throw new IllegalArgumentException("No existe el álbum " + albumId);
+        }
+        Album album = encontrado.get();
+        album.setTitulo(titulo);
+        albumRepository.save(album);
+        System.out.println("Álbum actualizado.");
+    }
+
+    private void borrarAlbum() {
+        int albumId = leerEntero("Id del álbum que quieres borrar: ");
+        if (!albumRepository.existsById(albumId)) {
+            throw new IllegalArgumentException("No existe el álbum " + albumId);
+        }
+        if (pistaRepository.countByAlbumId(albumId) > 0) {
+            throw new IllegalArgumentException("El álbum tiene pistas y no se puede borrar.");
+        }
+        albumRepository.deleteById(albumId);
+        System.out.println("Álbum borrado.");
+    }
+
+    private void contarPistasPorPlaylist() {
+        for (Object[] fila : playlistRepository.contarPistas()) {
+            System.out.println(fila[0] + " - " + fila[1] + ": " + fila[2] + " pistas");
+        }
+    }
+
+    private void anadirPistaAPlaylist() {
+        int playlistId = leerEntero("Id de la playlist: ");
+        int pistaId = leerEntero("Id de la pista: ");
+        if (gestorPlaylists.anadirPista(playlistId, pistaId)) {
+            System.out.println("Pista añadida a la playlist.");
+        } else {
+            System.out.println("La pista ya estaba en la playlist.");
+        }
+    }
+
+    private void titulosDeAlbumes() {
+        int artistaId = leerEntero("Id del artista: ");
+        for (String titulo : consultasArtistas.titulosDeAlbumes(artistaId)) {
+            System.out.println(titulo);
+        }
+    }
+
+    private String leerTexto(String mensaje) {
+        System.out.print(mensaje);
+        return teclado.nextLine().trim();
+    }
+
+    private int leerEntero(String mensaje) {
+        while (true) {
+            try {
+                return Integer.parseInt(leerTexto(mensaje));
+            } catch (NumberFormatException e) {
+                System.out.println("Escribe un número entero.");
+            }
+        }
+    }
+}
