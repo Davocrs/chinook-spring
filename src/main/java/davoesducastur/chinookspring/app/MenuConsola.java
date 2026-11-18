@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
-@Component
+// @Component
 @RequiredArgsConstructor
 public class MenuConsola implements CommandLineRunner {
 
