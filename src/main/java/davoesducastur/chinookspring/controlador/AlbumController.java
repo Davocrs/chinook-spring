@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+/**
+ * Páginas de los álbumes.
+ * Todas las rutas empiezan por /albumes.
+ */
 @Controller
 @RequestMapping("/albumes")
 public class AlbumController {
@@ -19,20 +23,29 @@ public class AlbumController {
         this.albumService = albumService;
     }
 
+    /**
+     * Muestra la ficha de un álbum con su artista y su tabla de pistas.
+     *
+     * @param id identificador del álbum, tomado de la ruta
+     * @return la página HTML completa de la ficha del álbum
+     * @throws davoesducastur.chinookspring.servicio.NoEncontradoException si el álbum no existe
+     */
     @GetMapping("/{id}")
     @ResponseBody
     public String ficha(@PathVariable Integer id) {
         AlbumDetalle album = albumService.buscarPorId(id);
-        StringBuilder html = new StringBuilder();
-        html.append("<h1>").append(Html.esc(album.titulo())).append("</h1>");
-        html.append("<p>De <a href=\"/artistas/").append(album.artista().id()).append("\">")
+        StringBuilder cuerpo = new StringBuilder();
+        cuerpo.append("<p>De <a href=\"/artistas/").append(album.artista().id()).append("\">")
                 .append(Html.esc(album.artista().nombre())).append("</a></p>");
-        html.append("<ol>");
+        cuerpo.append("<table border=\"1\"><tr><th>#</th><th>Pista</th><th>Duración</th></tr>");
+        int numero = 1;
         for (PistaResumen pista : album.pistas()) {
-            html.append("<li>").append(Html.esc(pista.nombre()))
-                    .append(" (").append(pista.duracion()).append(")</li>");
+            cuerpo.append("<tr><td>").append(numero).append("</td><td>")
+                    .append(Html.esc(pista.nombre())).append("</td><td>")
+                    .append(pista.duracion()).append("</td></tr>");
+            numero++;
         }
-        html.append("</ol>");
-        return html.toString();
+        cuerpo.append("</table>");
+        return Html.pagina(album.titulo(), cuerpo.toString());
     }
 }
