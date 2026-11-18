@@ -22,12 +22,3 @@ Tienda de música Chinook en el navegador: el modelo de la PG3 de la UT2 (entida
 | GET | `/hola` y `/hola-html` | Primeras pruebas del controlador |
 
 Cualquier otra ruta muestra la página `static/error/404.html`; un id que no es un número (`/artistas/abc`) da 400.
-
-### Capas
-
-```mermaid
-flowchart LR
-    N[Navegador] -->|"GET /artistas/1"| C[ArtistaController]
-    C -->|"buscarPorId(1)"| S[ArtistaService]
-    S -->|"findById(1)"| R[ArtistaRepository]
-    R -->|SQL| BD[("MariaDB · chinook")]
